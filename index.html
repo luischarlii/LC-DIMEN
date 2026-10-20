@@ -2,394 +2,357 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>FotoMedida 3D - Áreas y Volúmenes iOS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Medidor de Áreas y Volúmenes por Foto</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            -webkit-user-select: none;
+        }
+        /* Prevención de scroll innecesario al arrastrar en móviles */
+        .no-scroll {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
         }
         canvas {
             touch-action: none;
         }
         .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 6px;
+            height: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(148, 163, 184, 0.3);
+            background: rgba(156, 163, 175, 0.5);
             border-radius: 9999px;
-        }
-        /* Prevenir rebote visual en iOS Safari */
-        html, body {
-            overflow: hidden;
-            height: 100%;
-            width: 100%;
-            position: fixed;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 flex flex-col h-full w-full justify-between">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
 
-    <!-- Encabezado / Navbar -->
-    <header class="bg-slate-900/90 backdrop-blur-lg border-b border-slate-800 px-4 py-2.5 flex items-center justify-between shrink-0 z-20">
+    <!-- Encabezado -->
+    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700/60 sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
         <div class="flex items-center space-x-3">
-            <div class="bg-blue-600 text-white p-2 rounded-xl shadow-lg shadow-blue-500/20">
-                <i class="fa-solid fa-ruler-combined text-base"></i>
+            <div class="bg-blue-600 text-white p-2 rounded-xl shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-ruler-combined text-lg"></i>
             </div>
             <div>
-                <h1 class="font-bold text-sm sm:text-base tracking-tight leading-none text-white">FotoMedida Pro</h1>
-                <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5">Medición 3D desde fotos e iPhone</p>
+                <h1 class="font-bold text-base md:text-lg tracking-wide leading-tight">FotoMedida 3D</h1>
+                <p class="text-xs text-slate-400">Áreas y Volúmenes desde tu iPhone</p>
             </div>
         </div>
-
         <div class="flex items-center gap-2">
-            <button id="btnExport" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5">
-                <i class="fa-solid fa-share-nodes"></i>
-                <span class="hidden sm:inline">Exportar / Guardar</span>
+            <button id="btnExport" class="hidden sm:flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-md shadow-emerald-600/20">
+                <i class="fa-solid fa-download"></i> Exportar Imagen
             </button>
-            <button id="btnResetAll" title="Reiniciar proyecto" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-medium transition-all border border-slate-700/60">
-                <i class="fa-solid fa-rotate-right text-sm"></i>
+            <button id="btnResetAll" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium transition-all">
+                <i class="fa-solid fa-rotate-right"></i>
             </button>
         </div>
     </header>
 
-    <!-- Contenedor Principal (Lienzo + Panel Lateral) -->
-    <main class="flex-1 flex flex-col lg:flex-row w-full h-[calc(100%-57px)] overflow-hidden">
+    <!-- Contenido Principal / Área de Trabajo -->
+    <main class="flex-1 flex flex-col lg:flex-row w-full max-w-7xl mx-auto p-2 sm:p-4 gap-4 overflow-hidden">
 
-        <!-- Área de Canvas / Fotografía -->
-        <div id="canvasContainer" class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-hidden min-h-[320px]">
+        <!-- Lienzo Interactivo (Canvas Container) -->
+        <div class="flex-1 flex flex-col bg-slate-950 rounded-2xl border border-slate-800 relative overflow-hidden shadow-2xl min-h-[380px] md:min-h-[500px]">
             
-            <!-- Barra de Herramientas Flotante -->
-            <div class="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <div class="flex items-center bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-1 shadow-xl pointer-events-auto">
-                    <button id="toolScale" title="Línea de Escala" class="tool-btn active-tool px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all text-blue-400 bg-blue-500/20 border border-blue-500/40">
+            <!-- Barra de Herramientas Flotante / Superior del Canvas -->
+            <div class="absolute top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                <!-- Selector de Modos -->
+                <div class="flex items-center bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-lg pointer-events-auto">
+                    <button id="toolScale" title="Calibrar Escala" class="tool-btn active-tool px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all text-blue-400 bg-blue-500/20 border border-blue-500/40">
                         <i class="fa-solid fa-ruler-horizontal"></i>
-                        <span class="inline">1. Escala</span>
+                        <span class="hidden md:inline">1. Escala</span>
                     </button>
-                    <button id="toolShape" title="Dibujar Figuras" class="tool-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-all">
+                    <button id="toolShape" title="Dibujar Área" class="tool-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
                         <i class="fa-solid fa-draw-polygon"></i>
-                        <span class="inline">2. Áreas</span>
+                        <span class="hidden md:inline">2. Área</span>
                     </button>
-                    <button id="toolEdit" title="Ajustar Nodos" class="tool-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-all">
+                    <button id="toolEdit" title="Mover / Editar Nodos" class="tool-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
                         <i class="fa-solid fa-up-down-left-right"></i>
-                        <span class="inline">Mover</span>
+                        <span class="hidden md:inline">Ajustar</span>
                     </button>
                 </div>
 
-                <div id="statusBadge" class="bg-slate-900/90 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-2xl text-[11px] font-medium text-amber-400 flex items-center gap-2 shadow-xl pointer-events-auto">
-                    <i class="fa-solid fa-circle-info text-amber-400"></i>
-                    <span id="statusText">Carga una foto para comenzar</span>
+                <!-- Indicador de Estado y Ayuda Rápida -->
+                <div id="statusBadge" class="bg-slate-900/90 backdrop-blur-md border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium text-amber-400 flex items-center gap-2 shadow-lg pointer-events-auto">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span id="statusText">Traza una línea sobre un objeto de tamaño conocido</span>
                 </div>
             </div>
 
-            <!-- Cortina / Placeholder cuando no hay foto -->
-            <div id="uploadPlaceholder" class="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center bg-slate-950/95 backdrop-blur-sm">
-                <div class="w-20 h-20 bg-blue-600/10 border border-blue-500/30 rounded-3xl flex items-center justify-center text-blue-400 text-3xl mb-4 shadow-2xl">
-                    <i class="fa-solid fa-camera"></i>
+            <!-- Zona de Carga Vacía (Placeholder) -->
+            <div id="uploadPlaceholder" class="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 text-center bg-slate-900/95">
+                <div class="w-20 h-20 bg-blue-600/10 border border-blue-500/30 rounded-full flex items-center justify-center text-blue-400 text-3xl mb-4 shadow-inner">
+                    <i class="fa-solid fa-camera font-normal"></i>
                 </div>
-                <h2 class="text-xl font-bold text-white mb-2">Carga una fotografía</h2>
-                <p class="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
-                    Toma una foto con tu iPhone o sube una de la fototeca. Procura un encuadre lo más directo y perpendicular posible.
-                </p>
-
+                <h3 class="text-lg font-semibold text-white mb-1">Carga una fotografía para comenzar</h3>
+                <p class="text-xs text-slate-400 max-w-md mb-6">Toma una foto desde tu iPhone o sube una imagen de tu galería. Procura tomar la foto perpendicular a la superficie que deseas medir.</p>
+                
                 <div class="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-                    <!-- Tomar Foto en Vivo -->
-                    <label class="flex-1 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs py-3.5 px-4 rounded-2xl cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all">
+                    <!-- Tomar Foto (Cámara iPhone) -->
+                    <label class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs py-3 px-4 rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95">
                         <i class="fa-solid fa-camera text-sm"></i> Tomar Foto
                         <input type="file" id="inputCamera" accept="image/*" capture="environment" class="hidden">
                     </label>
-                    <!-- Galería / Fototeca -->
-                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs py-3.5 px-4 rounded-2xl cursor-pointer flex items-center justify-center gap-2 transition-all">
-                        <i class="fa-solid fa-images text-sm"></i> Fototeca
+                    <!-- Subir Galería -->
+                    <label class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs py-3 px-4 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-95">
+                        <i class="fa-solid fa-image text-sm"></i> Galería
                         <input type="file" id="inputGallery" accept="image/*" class="hidden">
                     </label>
                 </div>
             </div>
 
-            <!-- Elemento Canvas -->
-            <canvas id="mainCanvas" class="w-full h-full cursor-crosshair"></canvas>
+            <!-- Canvas -->
+            <div class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden bg-slate-950">
+                <canvas id="mainCanvas" class="max-w-full max-h-full object-contain cursor-crosshair"></canvas>
+            </div>
 
-            <!-- Acciones Rápidas Flotantes en Parte Inferior del Canvas -->
-            <div id="canvasBottomActions" class="absolute bottom-3 left-3 right-3 z-10 flex justify-between items-center pointer-events-none hidden">
+            <!-- Botones Flotantes Inferiores sobre el Canvas -->
+            <div id="canvasBottomActions" class="absolute bottom-3 left-3 right-3 z-20 flex justify-between items-center pointer-events-none hidden">
                 <div class="flex gap-2 pointer-events-auto">
-                    <button id="btnClearShape" class="bg-slate-900/90 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-800 hover:border-red-500/40 px-3 py-2 rounded-xl text-xs font-medium backdrop-blur-md transition-all shadow-lg flex items-center gap-1.5">
-                        <i class="fa-solid fa-trash-can"></i> Limpiar
+                    <button id="btnClearShape" class="bg-slate-800/90 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500/40 px-3 py-1.5 rounded-xl text-xs font-medium backdrop-blur-md transition-all shadow-lg flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i> Limpiar Forma
                     </button>
-                    <button id="btnUndoPoint" class="bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-2 rounded-xl text-xs font-medium backdrop-blur-md transition-all shadow-lg flex items-center gap-1.5">
+                    <button id="btnUndoPoint" class="bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium backdrop-blur-md transition-all shadow-lg flex items-center gap-1.5">
                         <i class="fa-solid fa-rotate-left"></i> Deshacer Punto
                     </button>
                 </div>
-
-                <button id="btnFinishPolygon" class="hidden pointer-events-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-semibold backdrop-blur-md transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-1.5">
+                
+                <button id="btnFinishPolygon" class="hidden pointer-events-auto bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md transition-all shadow-lg flex items-center gap-1.5">
                     <i class="fa-solid fa-check"></i> Cerrar Polígono
                 </button>
             </div>
         </div>
 
-        <!-- Panel Lateral Derecha / Panel Móvil Inferior -->
-        <aside class="w-full lg:w-96 bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-800 p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar shrink-0 max-h-[50vh] lg:max-h-full">
-
-            <!-- Card 1: Calibración de Escala -->
-            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-                <div class="flex items-center justify-between mb-2.5">
+        <!-- Panel Lateral / Ajustes y Resultados -->
+        <aside class="w-full lg:w-96 flex flex-col gap-4">
+            
+            <!-- Modal/Card de Calibración -->
+            <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
+                <div class="flex items-center justify-between mb-3">
                     <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
                         <i class="fa-solid fa-ruler"></i> 1. Calibración de Escala
                     </h2>
-                    <span id="scaleStatusBadge" class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">Pendiente</span>
+                    <span id="scaleStatusBadge" class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">Pendiente</span>
                 </div>
-
-                <div class="space-y-2.5">
-                    <div class="flex justify-between items-center text-xs text-slate-400">
-                        <span>Línea trazada:</span>
-                        <span id="pixelLengthText" class="font-mono text-slate-100 font-semibold">0 px</span>
-                    </div>
-
+                
+                <div class="space-y-3">
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Trazado: <span id="pixelLengthText" class="font-mono text-slate-100 font-bold">0 px</span>
+                    </p>
                     <div class="flex gap-2 items-center">
-                        <input type="number" id="inputRealLength" step="any" placeholder="Ej. 1.50" class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono">
-                        <select id="selectScaleUnit" class="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-semibold">
-                            <option value="m">metros (m)</option>
-                            <option value="cm" selected>cm</option>
+                        <div class="relative flex-1">
+                            <input type="number" id="inputRealLength" step="any" placeholder="Ej. 30" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <select id="selectScaleUnit" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-medium">
+                            <option value="cm">cm</option>
+                            <option value="m">m</option>
                             <option value="mm">mm</option>
-                            <option value="in">pulgadas (in)</option>
-                            <option value="ft">pies (ft)</option>
+                            <option value="in">pulg (in)</option>
                         </select>
                     </div>
-
-                    <button id="btnSetScale" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-98 text-white font-semibold text-xs py-2 rounded-xl transition-all shadow-md shadow-blue-600/20">
+                    <button id="btnSetScale" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-xs py-2 rounded-xl transition-all shadow-md shadow-blue-600/20">
                         Establecer Escala
                     </button>
                 </div>
             </div>
 
-            <!-- Card 2: Selección de Figura y Medición -->
-            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2 mb-2.5">
-                    <i class="fa-solid fa-shapes"></i> 2. Tipo de Figura
+            <!-- Card de Selección de Forma y Área -->
+            <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-shapes"></i> 2. Forma & Área
                 </h2>
 
                 <div class="grid grid-cols-3 gap-2 mb-3">
                     <button id="shapeTypePolygon" class="shape-type-btn active-shape-btn border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 p-2 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all">
                         <i class="fa-solid fa-draw-polygon text-sm"></i>
-                        <span class="text-[10px] font-semibold">Polígono</span>
+                        <span class="text-[10px] font-medium">Polígono</span>
                     </button>
-                    <button id="shapeTypeRect" class="shape-type-btn border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 p-2 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all">
+                    <button id="shapeTypeRect" class="shape-type-btn border border-slate-700 bg-slate-900/50 text-slate-400 hover:text-slate-200 p-2 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all">
                         <i class="fa-regular fa-square text-sm"></i>
-                        <span class="text-[10px] font-semibold">Rectángulo</span>
+                        <span class="text-[10px] font-medium">Rectángulo</span>
                     </button>
-                    <button id="shapeTypeCircle" class="shape-type-btn border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-slate-200 p-2 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all">
+                    <button id="shapeTypeCircle" class="shape-type-btn border border-slate-700 bg-slate-900/50 text-slate-400 hover:text-slate-200 p-2 rounded-xl text-center flex flex-col items-center justify-center gap-1 transition-all">
                         <i class="fa-regular fa-circle text-sm"></i>
-                        <span class="text-[10px] font-semibold">Círculo</span>
+                        <span class="text-[10px] font-medium">Círculo</span>
                     </button>
                 </div>
 
-                <!-- Resumen de Totales -->
-                <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex justify-between items-center">
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700/50 flex justify-between items-center">
                     <div>
-                        <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Área Total</span>
-                        <span id="displayArea" class="text-base font-extrabold text-emerald-400 font-mono">0.00 cm²</span>
+                        <span class="text-[11px] text-slate-400 block font-medium">Área Calculada</span>
+                        <span id="displayArea" class="text-lg font-extrabold text-emerald-400 font-mono">0.00 cm²</span>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Perímetro</span>
-                        <span id="displayPerimeter" class="text-xs font-bold text-slate-300 font-mono">0.00 cm</span>
+                        <span class="text-[10px] text-slate-500 block">Perímetro</span>
+                        <span id="displayPerimeter" class="text-xs font-semibold text-slate-300 font-mono">0.00 cm</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 3: Volumen / Extrusión -->
-            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-2.5">
+            <!-- Card de Volumen -->
+            <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2 mb-3">
                     <i class="fa-solid fa-cube"></i> 3. Proyección de Volumen
                 </h2>
 
-                <div class="space-y-2.5">
+                <div class="space-y-3">
                     <div>
-                        <label class="text-[11px] text-slate-400 block mb-1">Altura / Profundidad ($h$)</label>
+                        <label class="text-xs text-slate-300 block mb-1">Altura / Profundidad ($h$)</label>
                         <div class="flex gap-2">
-                            <input type="number" id="inputHeight" step="any" value="10" placeholder="10" class="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono">
-                            <select id="selectHeightUnit" class="bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-semibold">
-                                <option value="cm" selected>cm</option>
+                            <input type="number" id="inputHeight" step="any" value="10" placeholder="Ej. 10" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500">
+                            <select id="selectHeightUnit" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-medium">
+                                <option value="cm">cm</option>
                                 <option value="m">m</option>
                                 <option value="mm">mm</option>
-                                <option value="in">in</option>
-                                <option value="ft">ft</option>
+                                <option value="in">pulg (in)</option>
                             </select>
                         </div>
                     </div>
 
-                    <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex justify-between items-center">
+                    <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700/50 flex justify-between items-center">
                         <div>
-                            <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Volumen Estimado</span>
-                            <span id="displayVolume" class="text-base font-extrabold text-purple-400 font-mono">0.00 cm³</span>
+                            <span class="text-[11px] text-slate-400 block font-medium">Volumen Estimado</span>
+                            <span id="displayVolume" class="text-lg font-extrabold text-purple-400 font-mono">0.00 cm³</span>
                         </div>
                         <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Equivalente</span>
-                            <span id="displayLiters" class="text-xs font-bold text-purple-300/80 font-mono">0.00 L</span>
+                            <span class="text-[10px] text-slate-500 block">Equivalencia</span>
+                            <span id="displayLiters" class="text-xs font-semibold text-purple-300/80 font-mono">0.00 L</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 4: Lista de Figuras Creadas -->
-            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 shadow-sm flex-1 flex flex-col min-h-[140px]">
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                        <i class="fa-solid fa-list-check"></i> Capas de Medición
-                    </h2>
-                    <span id="shapesCount" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">0</span>
-                </div>
-
-                <div id="shapesList" class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 max-h-[150px] pr-1">
-                    <p class="text-[11px] text-slate-500 italic text-center py-4">No hay áreas trazadas aún.</p>
-                </div>
-            </div>
-
-            <!-- Botones de Acción Móvil en Cámara -->
-            <div class="flex gap-2 lg:hidden">
-                <label class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 font-semibold text-xs py-3 px-3 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all">
+            <!-- Botones de Acción Móviles -->
+            <div class="flex gap-2 sm:hidden">
+                <label class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs py-2.5 px-3 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 transition-all">
                     <i class="fa-solid fa-camera"></i> Cambiar Foto
                     <input type="file" id="inputCameraMobile" accept="image/*" capture="environment" class="hidden">
                 </label>
+                <button id="btnExportMobile" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-download"></i> Guardar
+                </button>
             </div>
 
         </aside>
-
+<center>LC DIMENSIONS • Luis Charlii</center>
     </main>
 
-    <!-- Modal para Descarga en iOS / Safari -->
-    <div id="exportModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-4 sm:p-5 flex flex-col gap-3 shadow-2xl relative">
-            <button id="btnCloseModal" class="absolute top-3 right-3 text-slate-400 hover:text-white bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center text-sm">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-
-            <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                <i class="fa-solid fa-file-image text-emerald-400"></i> Imagen Generada
-            </h3>
-
-            <!-- Indicación clave para usuarios de iPhone / iOS -->
-            <div class="bg-blue-500/10 border border-blue-500/20 text-blue-300 p-2.5 rounded-xl text-[11px] flex items-start gap-2">
-                <i class="fa-solid fa-hand-pointer text-sm shrink-0 mt-0.5"></i>
-                <span><strong>En iPhone/iOS:</strong> Mantén presionada la imagen para guardarla directamente en tu fototeca.</span>
-            </div>
-
-            <!-- Previsualización de la Imagen -->
-            <div class="relative w-full max-h-[50vh] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
-                <img id="exportedImagePreview" class="max-w-full max-h-[50vh] object-contain select-auto" alt="Medición exportada">
-            </div>
-
-            <div class="flex gap-2">
-                <a id="btnDirectDownload" href="#" download="medicion-fotomedida.png" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-3 rounded-xl text-center transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
-                    <i class="fa-solid fa-download"></i> Descargar Imagen
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast de Notificaciones -->
-    <div id="customToast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-slate-700 text-slate-100 px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 transition-all duration-300 transform translate-y-16 opacity-0 pointer-events-none">
-        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+    <!-- Modal Notificación/Mensajes personalizado -->
+    <div id="customToast" class="fixed bottom-5 right-5 z-50 bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
         <span id="toastMessage" class="text-xs font-medium">Notificación</span>
     </div>
 
-    <!-- JavaScript Lógica Mejorada para iOS -->
+    <!-- JavaScript Lógica de la Aplicación -->
     <script>
-        // --- ESTADO GLOBAL ---
+        // --- ESTADO GLOBAL DE LA APLICACIÓN ---
         const state = {
             image: null,
-            imgUrl: null,
-            imgDimensions: { width: 0, height: 0 },
+            imgScale: 1,
+            offsetX: 0,
+            offsetY: 0,
             
-            currentTool: 'SCALE', // 'SCALE', 'SHAPE', 'EDIT'
-            shapeType: 'POLYGON', // 'POLYGON', 'RECTANGLE', 'CIRCLE'
-
-            // Calibración de Escala
-            scaleLine: [], // [{x, y}, {x, y}] en coordenadas relativas a la imagen original [0..1]
-            pixelsPerUnit: null,
-            scaleUnit: 'cm',
+            // Modo de interacción: 'SCALE', 'SHAPE', 'EDIT'
+            currentTool: 'SCALE',
+            
+            // Tipo de figura: 'POLYGON', 'RECTANGLE', 'CIRCLE'
+            shapeType: 'POLYGON',
+            
+            // Puntos de escala (Línea de calibración)
+            scaleLine: [], // [{x, y}, {x, y}]
+            pixelsPerUnit: null, // Relación px / unidad
+            scaleUnit: 'cm', // 'cm', 'm', 'mm', 'in'
             realScaleLength: 0,
 
-            // Lista de figuras trazadas
-            shapes: [], // { id, type, points: [], rectStart, rectEnd, circleCenter, circleRadiusPx }
-            activeShapeIndex: -1,
+            // Puntos de la figura
+            shapePoints: [], // Para polígono o esquinas de rectángulo/diámetros
+            isPolygonClosed: false,
 
-            // Polígono en proceso de dibujo
-            currentPolygonPoints: [], // [{x, y}] normalizados
+            // Geometría para rectángulo/círculo
+            rectStart: null,
+            rectEnd: null,
+            circleCenter: null,
+            circleRadiusPx: 0,
 
-            // Altura / Profundidad
+            // Altura para el volumen
             heightValue: 10,
             heightUnit: 'cm',
 
-            // Estado de arrastre
-            draggedItem: null, // { type: 'SCALE'|'SHAPE', pointIndex, shapeIndex }
+            // Arrastre / Edición
+            draggedPoint: null,
+            dragType: null, // 'SCALE', 'SHAPE_POINT', 'RECT_CORNER', 'CIRCLE_EDGE'
+            dragIndex: -1,
 
+            // Variables de canvas
             canvas: null,
             ctx: null
         };
 
-        const TOUCH_HANDLE_RADIUS = 12;
+        // --- CONSTANTES DE DISEÑO ---
+        const HANDLE_RADIUS = 8;
+        const TOUCH_HANDLE_RADIUS = 16; // Mayor área táctil
 
-        // --- REFERENCIAS AL DOM ---
+        // --- ELEMENTOS DEL DOM ---
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
-        const canvasContainer = document.getElementById('canvasContainer');
 
+        // Inputs & Controles
         const inputCamera = document.getElementById('inputCamera');
         const inputGallery = document.getElementById('inputGallery');
         const inputCameraMobile = document.getElementById('inputCameraMobile');
         const uploadPlaceholder = document.getElementById('uploadPlaceholder');
         const canvasBottomActions = document.getElementById('canvasBottomActions');
 
+        // Modos
         const toolScale = document.getElementById('toolScale');
         const toolShape = document.getElementById('toolShape');
         const toolEdit = document.getElementById('toolEdit');
 
+        // Formas
         const shapeTypePolygon = document.getElementById('shapeTypePolygon');
         const shapeTypeRect = document.getElementById('shapeTypeRect');
         const shapeTypeCircle = document.getElementById('shapeTypeCircle');
 
+        // Calibración
         const pixelLengthText = document.getElementById('pixelLengthText');
         const inputRealLength = document.getElementById('inputRealLength');
         const selectScaleUnit = document.getElementById('selectScaleUnit');
         const btnSetScale = document.getElementById('btnSetScale');
         const scaleStatusBadge = document.getElementById('scaleStatusBadge');
 
+        // Medición
         const displayArea = document.getElementById('displayArea');
         const displayPerimeter = document.getElementById('displayPerimeter');
         const inputHeight = document.getElementById('inputHeight');
         const selectHeightUnit = document.getElementById('selectHeightUnit');
         const displayVolume = document.getElementById('displayVolume');
         const displayLiters = document.getElementById('displayLiters');
-        const shapesList = document.getElementById('shapesList');
-        const shapesCount = document.getElementById('shapesCount');
 
+        // Botones de acción
         const btnClearShape = document.getElementById('btnClearShape');
         const btnUndoPoint = document.getElementById('btnUndoPoint');
         const btnFinishPolygon = document.getElementById('btnFinishPolygon');
         const btnExport = document.getElementById('btnExport');
+        const btnExportMobile = document.getElementById('btnExportMobile');
         const btnResetAll = document.getElementById('btnResetAll');
         const statusText = document.getElementById('statusText');
 
-        const exportModal = document.getElementById('exportModal');
-        const btnCloseModal = document.getElementById('btnCloseModal');
-        const exportedImagePreview = document.getElementById('exportedImagePreview');
-        const btnDirectDownload = document.getElementById('btnDirectDownload');
-
         // --- INICIALIZACIÓN ---
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('load', () => {
             state.canvas = canvas;
             state.ctx = ctx;
-            setupEventListeners();
             resizeCanvas();
+            setupEventListeners();
         });
 
         window.addEventListener('resize', () => {
@@ -398,32 +361,29 @@
         });
 
         function resizeCanvas() {
-            if (!canvasContainer) return;
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvasContainer.getBoundingClientRect();
-            
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            canvas.style.width = `${rect.width}px`;
-            canvas.style.height = `${rect.height}px`;
-
-            ctx.scale(dpr, dpr);
-            render();
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
         }
 
+        // --- EVENT LISTENERS ---
         function setupEventListeners() {
-            [inputCamera, inputGallery, inputCameraMobile].forEach(input => {
-                if (input) input.addEventListener('change', handleImageLoad);
-            });
+            // Carga de imágenes
+            inputCamera.addEventListener('change', handleImageUpload);
+            inputGallery.addEventListener('change', handleImageUpload);
+            if (inputCameraMobile) inputCameraMobile.addEventListener('change', handleImageUpload);
 
+            // Herramientas principales
             toolScale.addEventListener('click', () => setTool('SCALE'));
             toolShape.addEventListener('click', () => setTool('SHAPE'));
             toolEdit.addEventListener('click', () => setTool('EDIT'));
 
+            // Selector de tipo de figura
             shapeTypePolygon.addEventListener('click', () => setShapeType('POLYGON'));
             shapeTypeRect.addEventListener('click', () => setShapeType('RECTANGLE'));
             shapeTypeCircle.addEventListener('click', () => setShapeType('CIRCLE'));
 
+            // Botones de calibración y parámetros
             btnSetScale.addEventListener('click', confirmScale);
             inputHeight.addEventListener('input', updateCalculations);
             selectHeightUnit.addEventListener('change', () => {
@@ -431,317 +391,289 @@
                 updateCalculations();
             });
 
-            btnClearShape.addEventListener('click', clearCurrentShape);
+            // Acciones de figura
+            btnClearShape.addEventListener('click', clearShape);
             btnUndoPoint.addEventListener('click', undoLastPoint);
-            btnFinishPolygon.addEventListener('click', finishPolygon);
+            btnFinishPolygon.addEventListener('click', closePolygon);
             btnResetAll.addEventListener('click', resetAll);
 
-            btnExport.addEventListener('click', prepareExportModal);
-            btnCloseModal.addEventListener('click', () => {
-                exportModal.classList.add('opacity-0', 'pointer-events-none');
-            });
+            // Exportación
+            btnExport.addEventListener('click', exportAnnotatedImage);
+            if (btnExportMobile) btnExportMobile.addEventListener('click', exportAnnotatedImage);
 
-            // Eventos Táctiles y Ratón (Pointer Events para máxima compatibilidad iOS/Android)
-            canvas.addEventListener('pointerdown', handlePointerDown);
-            canvas.addEventListener('pointermove', handlePointerMove);
-            window.addEventListener('pointerup', handlePointerUp);
-            canvas.addEventListener('pointercancel', handlePointerUp);
+            // Interacción táctil y puntero en el Canvas
+            canvas.addEventListener('mousedown', handlePointerDown);
+            canvas.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('mouseup', handlePointerUp);
+
+            canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+            canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+            window.addEventListener('touchend', handlePointerUp);
         }
 
-        // --- CARGA DE IMÁGENES (OPTIMIZADA PARA iOS) ---
-        function handleImageLoad(e) {
+        // --- CARGA DE IMAGEN ---
+        function handleImageUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            // Usar URL.createObjectURL para óptima memoria en iOS
-            if (state.imgUrl) URL.revokeObjectURL(state.imgUrl);
-            state.imgUrl = URL.createObjectURL(file);
-
-            const img = new Image();
-            img.onload = () => {
-                state.image = img;
-                state.imgDimensions = { width: img.naturalWidth, height: img.naturalHeight };
-                uploadPlaceholder.classList.add('hidden');
-                canvasBottomActions.classList.remove('hidden');
-
-                resetScaleAndShapes();
-                resizeCanvas();
-                render();
-                showToast('Foto cargada correctamente', 'success');
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    uploadPlaceholder.classList.add('hidden');
+                    canvasBottomActions.classList.remove('hidden');
+                    
+                    // Ajustar la vista inicial
+                    resetScaleAndShape();
+                    render();
+                    showToast('Imagen cargada correctamente', 'success');
+                };
+                img.src = event.target.result;
             };
-            img.onerror = () => {
-                showToast('Error al procesar la imagen de la foto', 'error');
-            };
-            img.src = state.imgUrl;
+            reader.readAsDataURL(file);
         }
 
-        function resetScaleAndShapes() {
+        function resetScaleAndShape() {
             state.scaleLine = [];
             state.pixelsPerUnit = null;
-            state.shapes = [];
-            state.activeShapeIndex = -1;
-            state.currentPolygonPoints = [];
-
+            state.shapePoints = [];
+            state.isPolygonClosed = false;
+            state.rectStart = null;
+            state.rectEnd = null;
+            state.circleCenter = null;
+            state.circleRadiusPx = 0;
+            
             scaleStatusBadge.textContent = 'Pendiente';
-            scaleStatusBadge.className = 'text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold';
+            scaleStatusBadge.className = 'text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold';
             pixelLengthText.textContent = '0 px';
-
+            
             setTool('SCALE');
             updateCalculations();
-            updateShapesListUI();
         }
 
         function resetAll() {
-            if (confirm('¿Deseas reiniciar todo el proyecto?')) {
+            if (confirm('¿Deseas reiniciar toda la mesa de trabajo?')) {
                 state.image = null;
                 uploadPlaceholder.classList.remove('hidden');
                 canvasBottomActions.classList.add('hidden');
-                resetScaleAndShapes();
+                resetScaleAndShape();
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                showToast('Proyecto reiniciado', 'info');
+                showToast('Se ha reiniciado el área de trabajo', 'info');
             }
         }
 
-        // --- HERRAMIENTAS & NAVEGACIÓN ---
+        // --- MANEJO DE HERRAMIENTAS Y FIGURAS ---
         function setTool(tool) {
             state.currentTool = tool;
 
+            // Actualizar interfaz botones
             [toolScale, toolShape, toolEdit].forEach(btn => {
                 btn.classList.remove('active-tool', 'text-blue-400', 'bg-blue-500/20', 'border-blue-500/40');
-                btn.classList.add('text-slate-400');
+                btn.classList.add('text-slate-300');
             });
 
             if (tool === 'SCALE') {
                 toolScale.classList.add('active-tool', 'text-blue-400', 'bg-blue-500/20', 'border-blue-500/40');
-                statusText.textContent = 'Traza una línea sobre un objeto de tamaño conocido';
+                statusText.textContent = 'Modo Calibración: Trazado de línea de referencia';
             } else if (tool === 'SHAPE') {
                 toolShape.classList.add('active-tool', 'text-blue-400', 'bg-blue-500/20', 'border-blue-500/40');
-                statusText.textContent = 'Toca la pantalla para marcar el área deseada';
+                statusText.textContent = 'Modo Dibujo: Toca sobre el lienzo para marcar la forma';
             } else if (tool === 'EDIT') {
                 toolEdit.classList.add('active-tool', 'text-blue-400', 'bg-blue-500/20', 'border-blue-500/40');
-                statusText.textContent = 'Arrastra cualquier nodo para ajustar posiciones';
+                statusText.textContent = 'Modo Ajuste: Arrastra los puntos para afinar la medición';
             }
 
-            updateFinishButtonVisibility();
+            btnFinishPolygon.classList.toggle('hidden', !(tool === 'SHAPE' && state.shapeType === 'POLYGON' && state.shapePoints.length >= 3 && !state.isPolygonClosed));
+
             render();
         }
 
         function setShapeType(type) {
             state.shapeType = type;
-            state.currentPolygonPoints = [];
+            clearShape();
 
             [shapeTypePolygon, shapeTypeRect, shapeTypeCircle].forEach(btn => {
                 btn.classList.remove('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
-                btn.classList.add('border-slate-800', 'bg-slate-900/60', 'text-slate-400');
+                btn.classList.add('border-slate-700', 'bg-slate-900/50', 'text-slate-400');
             });
 
-            if (type === 'POLYGON') shapeTypePolygon.classList.add('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
-            if (type === 'RECTANGLE') shapeTypeRect.classList.add('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
-            if (type === 'CIRCLE') shapeTypeCircle.classList.add('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
+            if (type === 'POLYGON') {
+                shapeTypePolygon.classList.add('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
+            } else if (type === 'RECTANGLE') {
+                shapeTypeRect.classList.add('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
+            } else if (type === 'CIRCLE') {
+                shapeTypeCircle.classList.add('active-shape-btn', 'border-emerald-500/50', 'bg-emerald-500/10', 'text-emerald-300');
+            }
 
             setTool('SHAPE');
         }
 
-        // --- SISTEMA DE COORDENADAS RELATIVAS AL CANVAS Y LA IMAGEN ---
-        function getCanvasBounds() {
-            const rect = canvasContainer.getBoundingClientRect();
-            if (!state.image) return { x: 0, y: 0, w: rect.width, h: rect.height, scale: 1 };
+        // --- INTERACCIÓN Y MANEJO DEL CANVAS ---
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX;
+            let clientY = e.clientY;
 
-            const imgAspect = state.imgDimensions.width / state.imgDimensions.height;
-            const containerAspect = rect.width / rect.height;
-
-            let w, h, x, y, scale;
-
-            if (containerAspect > imgAspect) {
-                h = rect.height;
-                w = rect.height * imgAspect;
-                x = (rect.width - w) / 2;
-                y = 0;
-                scale = h / state.imgDimensions.height;
-            } else {
-                w = rect.width;
-                h = rect.width / imgAspect;
-                x = 0;
-                y = (rect.height - h) / 2;
-                scale = w / state.imgDimensions.width;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
             }
 
-            return { x, y, w, h, scale };
-        }
-
-        function screenToImageCoords(screenX, screenY) {
-            const b = getCanvasBounds();
             return {
-                x: (screenX - b.x) / b.w,
-                y: (screenY - b.y) / b.h
-            };
-        }
-
-        function imageToScreenCoords(imgX, imgY) {
-            const b = getCanvasBounds();
-            return {
-                x: b.x + imgX * b.w,
-                y: b.y + imgY * b.h
-            };
-        }
-
-        // --- POINTER EVENTS (TOUCH / MOUSE) ---
-        function getEventPos(e) {
-            const rect = canvasContainer.getBoundingClientRect();
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
+                x: clientX - rect.left,
+                y: clientY - rect.top
             };
         }
 
         function handlePointerDown(e) {
             if (!state.image) return;
-            const pos = getEventPos(e);
-            const imgPt = screenToImageCoords(pos.x, pos.y);
+            const pt = getCanvasCoordinates(e);
 
             if (state.currentTool === 'SCALE') {
                 if (state.scaleLine.length < 2) {
-                    state.scaleLine.push(imgPt);
+                    state.scaleLine.push(pt);
                 } else {
-                    const nearIdx = getNearestPointIndex(pos, state.scaleLine.map(p => imageToScreenCoords(p.x, p.y)));
+                    // Si ya existía, revisar si toca una esquina para mover o reinicia
+                    const nearIdx = getNearestPointIndex(pt, state.scaleLine);
                     if (nearIdx !== -1) {
-                        state.draggedItem = { type: 'SCALE', pointIndex: nearIdx };
+                        state.draggedPoint = 'SCALE';
+                        state.dragIndex = nearIdx;
                     } else {
-                        state.scaleLine = [imgPt];
+                        state.scaleLine = [pt];
                     }
                 }
                 updateScaleDistanceText();
+                render();
             } 
             else if (state.currentTool === 'SHAPE') {
                 if (state.shapeType === 'POLYGON') {
-                    state.currentPolygonPoints.push(imgPt);
-                    updateFinishButtonVisibility();
+                    if (!state.isPolygonClosed) {
+                        state.shapePoints.push(pt);
+                        if (state.shapePoints.length >= 3) {
+                            btnFinishPolygon.classList.remove('hidden');
+                        }
+                    }
                 } else if (state.shapeType === 'RECTANGLE') {
-                    // Generar un rectángulo centrado en el punto
-                    const offset = 0.1;
-                    const newRect = {
-                        id: Date.now(),
-                        type: 'RECTANGLE',
-                        rectStart: { x: Math.max(0, imgPt.x - offset), y: Math.max(0, imgPt.y - offset) },
-                        rectEnd: { x: Math.min(1, imgPt.x + offset), y: Math.min(1, imgPt.y + offset) }
-                    };
-                    state.shapes.push(newRect);
-                    state.activeShapeIndex = state.shapes.length - 1;
-                    setTool('EDIT');
+                    if (!state.rectStart) {
+                        state.rectStart = pt;
+                        state.rectEnd = { ...pt };
+                    } else {
+                        state.rectEnd = pt;
+                    }
                 } else if (state.shapeType === 'CIRCLE') {
-                    const newCircle = {
-                        id: Date.now(),
-                        type: 'CIRCLE',
-                        circleCenter: imgPt,
-                        circleRadiusRel: 0.1
-                    };
-                    state.shapes.push(newCircle);
-                    state.activeShapeIndex = state.shapes.length - 1;
-                    setTool('EDIT');
+                    if (!state.circleCenter) {
+                        state.circleCenter = pt;
+                        state.circleRadiusPx = 10;
+                    } else {
+                        state.circleRadiusPx = Math.hypot(pt.x - state.circleCenter.x, pt.y - state.circleCenter.y);
+                    }
                 }
+                updateCalculations();
+                render();
             } 
             else if (state.currentTool === 'EDIT') {
-                // Probar interacción con puntos de escala
-                const scaleIdx = getNearestPointIndex(pos, state.scaleLine.map(p => imageToScreenCoords(p.x, p.y)));
+                // Verificar qué se está intentando mover
+                // 1. Escala
+                let scaleIdx = getNearestPointIndex(pt, state.scaleLine);
                 if (scaleIdx !== -1) {
-                    state.draggedItem = { type: 'SCALE', pointIndex: scaleIdx };
+                    state.dragType = 'SCALE';
+                    state.dragIndex = scaleIdx;
                     return;
                 }
 
-                // Probar interacción con figuras dibujadas
-                for (let sIdx = state.shapes.length - 1; sIdx >= 0; sIdx--) {
-                    const shape = state.shapes[sIdx];
-                    if (shape.type === 'POLYGON') {
-                        const pIdx = getNearestPointIndex(pos, shape.points.map(p => imageToScreenCoords(p.x, p.y)));
-                        if (pIdx !== -1) {
-                            state.draggedItem = { type: 'POLYGON_POINT', shapeIndex: sIdx, pointIndex: pIdx };
-                            state.activeShapeIndex = sIdx;
-                            break;
-                        }
-                    } else if (shape.type === 'RECTANGLE') {
-                        const corners = getRectCorners(shape);
-                        const cIdx = getNearestPointIndex(pos, corners.map(p => imageToScreenCoords(p.x, p.y)));
-                        if (cIdx !== -1) {
-                            state.draggedItem = { type: 'RECT_CORNER', shapeIndex: sIdx, cornerIndex: cIdx };
-                            state.activeShapeIndex = sIdx;
-                            break;
-                        }
-                    } else if (shape.type === 'CIRCLE') {
-                        const centerScr = imageToScreenCoords(shape.circleCenter.x, shape.circleCenter.y);
-                        const distCenter = Math.hypot(pos.x - centerScr.x, pos.y - centerScr.y);
-                        
-                        const b = getCanvasBounds();
-                        const radiusScr = shape.circleRadiusRel * b.w;
-
-                        if (distCenter <= TOUCH_HANDLE_RADIUS) {
-                            state.draggedItem = { type: 'CIRCLE_CENTER', shapeIndex: sIdx };
-                            state.activeShapeIndex = sIdx;
-                            break;
-                        } else if (Math.abs(distCenter - radiusScr) <= TOUCH_HANDLE_RADIUS * 1.5) {
-                            state.draggedItem = { type: 'CIRCLE_EDGE', shapeIndex: sIdx };
-                            state.activeShapeIndex = sIdx;
-                            break;
-                        }
+                // 2. Polígono
+                if (state.shapeType === 'POLYGON') {
+                    let polyIdx = getNearestPointIndex(pt, state.shapePoints);
+                    if (polyIdx !== -1) {
+                        state.dragType = 'SHAPE_POINT';
+                        state.dragIndex = polyIdx;
+                        return;
+                    }
+                } 
+                // 3. Rectángulo
+                else if (state.shapeType === 'RECTANGLE' && state.rectStart && state.rectEnd) {
+                    const corners = getRectCorners();
+                    let rectIdx = getNearestPointIndex(pt, corners);
+                    if (rectIdx !== -1) {
+                        state.dragType = 'RECT_CORNER';
+                        state.dragIndex = rectIdx;
+                        return;
+                    }
+                }
+                // 4. Círculo
+                else if (state.shapeType === 'CIRCLE' && state.circleCenter) {
+                    const distToCenter = Math.hypot(pt.x - state.circleCenter.x, pt.y - state.circleCenter.y);
+                    if (distToCenter <= TOUCH_HANDLE_RADIUS) {
+                        state.dragType = 'CIRCLE_CENTER';
+                        return;
+                    } else if (Math.abs(distToCenter - state.circleRadiusPx) <= TOUCH_HANDLE_RADIUS) {
+                        state.dragType = 'CIRCLE_EDGE';
+                        return;
                     }
                 }
             }
-
-            updateCalculations();
-            updateShapesListUI();
-            render();
         }
 
         function handlePointerMove(e) {
-            if (!state.draggedItem || !state.image) return;
-            const pos = getEventPos(e);
-            const imgPt = screenToImageCoords(pos.x, pos.y);
+            if (!state.image) return;
+            const pt = getCanvasCoordinates(e);
 
-            const item = state.draggedItem;
-            if (item.type === 'SCALE') {
-                state.scaleLine[item.pointIndex] = imgPt;
-                updateScaleDistanceText();
-            } else if (item.type === 'POLYGON_POINT') {
-                state.shapes[item.shapeIndex].points[item.pointIndex] = imgPt;
-            } else if (item.type === 'RECT_CORNER') {
-                updateRectFromCorner(state.shapes[item.shapeIndex], item.cornerIndex, imgPt);
-            } else if (item.type === 'CIRCLE_CENTER') {
-                state.shapes[item.shapeIndex].circleCenter = imgPt;
-            } else if (item.type === 'CIRCLE_EDGE') {
-                const shape = state.shapes[item.shapeIndex];
-                const centerScr = imageToScreenCoords(shape.circleCenter.x, shape.circleCenter.y);
-                const b = getCanvasBounds();
-                const distPx = Math.hypot(pos.x - centerScr.x, pos.y - centerScr.y);
-                shape.circleRadiusRel = Math.max(0.01, distPx / b.w);
+            // Mover mientras se arrastra en modo edición o creación
+            if (state.dragType) {
+                if (state.dragType === 'SCALE') {
+                    state.scaleLine[state.dragIndex] = pt;
+                    updateScaleDistanceText();
+                } else if (state.dragType === 'SHAPE_POINT') {
+                    state.shapePoints[state.dragIndex] = pt;
+                } else if (state.dragType === 'RECT_CORNER') {
+                    updateRectFromCorner(state.dragIndex, pt);
+                } else if (state.dragType === 'CIRCLE_CENTER') {
+                    state.circleCenter = pt;
+                } else if (state.dragType === 'CIRCLE_EDGE') {
+                    state.circleRadiusPx = Math.hypot(pt.x - state.circleCenter.x, pt.y - state.circleCenter.y);
+                }
+                updateCalculations();
+                render();
+            } else if (state.currentTool === 'SHAPE') {
+                if (state.shapeType === 'RECTANGLE' && state.rectStart && !state.rectEnd) {
+                    state.rectEnd = pt;
+                    render();
+                } else if (state.shapeType === 'CIRCLE' && state.circleCenter && state.circleRadiusPx === 10) {
+                    state.circleRadiusPx = Math.hypot(pt.x - state.circleCenter.x, pt.y - state.circleCenter.y);
+                    render();
+                }
             }
-
-            updateCalculations();
-            render();
         }
 
         function handlePointerUp() {
-            state.draggedItem = null;
+            state.dragType = null;
+            state.dragIndex = -1;
             updateCalculations();
         }
 
-        function getNearestPointIndex(pos, screenPoints) {
+        function getNearestPointIndex(pt, pointsArray, maxDist = TOUCH_HANDLE_RADIUS * 1.5) {
             let minDist = Infinity;
-            let idx = -1;
-            screenPoints.forEach((p, i) => {
-                const d = Math.hypot(pos.x - p.x, pos.y - p.y);
-                if (d < minDist && d <= TOUCH_HANDLE_RADIUS * 2) {
+            let index = -1;
+
+            pointsArray.forEach((p, idx) => {
+                const d = Math.hypot(pt.x - p.x, pt.y - p.y);
+                if (d < minDist && d <= maxDist) {
                     minDist = d;
-                    idx = i;
+                    index = idx;
                 }
             });
-            return idx;
+
+            return index;
         }
 
-        // --- LÓGICA DE GEOMETRÍA & ESCALA ---
+        // --- ESCALA Y CALIBRACIÓN ---
         function updateScaleDistanceText() {
             if (state.scaleLine.length === 2) {
-                const p1 = imageToScreenCoords(state.scaleLine[0].x, state.scaleLine[0].y);
-                const p2 = imageToScreenCoords(state.scaleLine[1].x, state.scaleLine[1].y);
-                const pxDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                const pxDist = Math.hypot(
+                    state.scaleLine[1].x - state.scaleLine[0].x,
+                    state.scaleLine[1].y - state.scaleLine[0].y
+                );
                 pixelLengthText.textContent = `${Math.round(pxDist)} px`;
             } else {
                 pixelLengthText.textContent = '0 px';
@@ -751,180 +683,182 @@
         function confirmScale() {
             const realVal = parseFloat(inputRealLength.value);
             if (isNaN(realVal) || realVal <= 0) {
-                showToast('Ingresa una longitud real mayor a cero', 'warning');
+                showToast('Ingresa un valor numérico real mayor a cero', 'error');
                 return;
             }
 
             if (state.scaleLine.length < 2) {
-                showToast('Dibuja la línea de referencia sobre la foto primero', 'warning');
+                showToast('Traza una línea de referencia en la imagen primero', 'warning');
                 return;
             }
 
-            const p1 = imageToScreenCoords(state.scaleLine[0].x, state.scaleLine[0].y);
-            const p2 = imageToScreenCoords(state.scaleLine[1].x, state.scaleLine[1].y);
-            const pxDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            const pxDist = Math.hypot(
+                state.scaleLine[1].x - state.scaleLine[0].x,
+                state.scaleLine[1].y - state.scaleLine[0].y
+            );
 
             state.realScaleLength = realVal;
             state.scaleUnit = selectScaleUnit.value;
             state.pixelsPerUnit = pxDist / realVal;
 
             scaleStatusBadge.textContent = 'Calibrado';
-            scaleStatusBadge.className = 'text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold';
+            scaleStatusBadge.className = 'text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold';
 
-            showToast(`Escala: 1 ${state.scaleUnit} = ${state.pixelsPerUnit.toFixed(1)} px`, 'success');
+            showToast(`Escala establecida: 1 ${state.scaleUnit} = ${(state.pixelsPerUnit).toFixed(1)} px`, 'success');
 
-            if (state.shapes.length === 0) setTool('SHAPE');
+            // Pasar automáticamente a dibujo si no hay forma trazada
+            if (state.shapePoints.length === 0 && !state.rectStart && !state.circleCenter) {
+                setTool('SHAPE');
+            }
 
             updateCalculations();
             render();
         }
 
-        function finishPolygon() {
-            if (state.currentPolygonPoints.length >= 3) {
-                const newPoly = {
-                    id: Date.now(),
-                    type: 'POLYGON',
-                    points: [...state.currentPolygonPoints]
-                };
-                state.shapes.push(newPoly);
-                state.activeShapeIndex = state.shapes.length - 1;
-                state.currentPolygonPoints = [];
-                updateFinishButtonVisibility();
-                setTool('EDIT');
-                updateCalculations();
-                updateShapesListUI();
-                render();
-                showToast('Polígono cerrado', 'info');
-            }
-        }
-
-        function undoLastPoint() {
-            if (state.currentPolygonPoints.length > 0) {
-                state.currentPolygonPoints.pop();
-                updateFinishButtonVisibility();
-                render();
-            }
-        }
-
-        function clearCurrentShape() {
-            state.currentPolygonPoints = [];
-            updateFinishButtonVisibility();
-            render();
-        }
-
-        function updateFinishButtonVisibility() {
-            if (state.currentTool === 'SHAPE' && state.shapeType === 'POLYGON' && state.currentPolygonPoints.length >= 3) {
-                btnFinishPolygon.classList.remove('hidden');
-            } else {
-                btnFinishPolygon.classList.add('hidden');
-            }
-        }
-
-        function getRectCorners(shape) {
-            const s = shape.rectStart;
-            const e = shape.rectEnd;
+        // --- EDICIÓN Y GEOMETRÍA DEL RECTÁNGULO ---
+        function getRectCorners() {
+            if (!state.rectStart || !state.rectEnd) return [];
             return [
-                { x: s.x, y: s.y },
-                { x: e.x, y: s.y },
-                { x: e.x, y: e.y },
-                { x: s.x, y: e.y }
+                { x: state.rectStart.x, y: state.rectStart.y }, // Top-Left
+                { x: state.rectEnd.x, y: state.rectStart.y },   // Top-Right
+                { x: state.rectEnd.x, y: state.rectEnd.y },     // Bottom-Right
+                { x: state.rectStart.x, y: state.rectEnd.y }    // Bottom-Left
             ];
         }
 
-        function updateRectFromCorner(shape, cornerIndex, newPt) {
-            if (cornerIndex === 0) { shape.rectStart.x = newPt.x; shape.rectStart.y = newPt.y; }
-            else if (cornerIndex === 1) { shape.rectEnd.x = newPt.x; shape.rectStart.y = newPt.y; }
-            else if (cornerIndex === 2) { shape.rectEnd.x = newPt.x; shape.rectEnd.y = newPt.y; }
-            else if (cornerIndex === 3) { shape.rectStart.x = newPt.x; shape.rectEnd.y = newPt.y; }
+        function updateRectFromCorner(cornerIndex, newPt) {
+            if (cornerIndex === 0) { // Top-Left
+                state.rectStart.x = newPt.x;
+                state.rectStart.y = newPt.y;
+            } else if (cornerIndex === 1) { // Top-Right
+                state.rectEnd.x = newPt.x;
+                state.rectStart.y = newPt.y;
+            } else if (cornerIndex === 2) { // Bottom-Right
+                state.rectEnd.x = newPt.x;
+                state.rectEnd.y = newPt.y;
+            } else if (cornerIndex === 3) { // Bottom-Left
+                state.rectStart.x = newPt.x;
+                state.rectEnd.y = newPt.y;
+            }
         }
 
-        // --- CÁLCULOS MATEMÁTICOS & UNIDADES ---
+        function clearShape() {
+            state.shapePoints = [];
+            state.isPolygonClosed = false;
+            state.rectStart = null;
+            state.rectEnd = null;
+            state.circleCenter = null;
+            state.circleRadiusPx = 0;
+            btnFinishPolygon.classList.add('hidden');
+            updateCalculations();
+            render();
+        }
+
+        function undoLastPoint() {
+            if (state.shapeType === 'POLYGON' && state.shapePoints.length > 0) {
+                state.shapePoints.pop();
+                state.isPolygonClosed = false;
+                if (state.shapePoints.length < 3) {
+                    btnFinishPolygon.classList.add('hidden');
+                }
+                updateCalculations();
+                render();
+            }
+        }
+
+        function closePolygon() {
+            if (state.shapePoints.length >= 3) {
+                state.isPolygonClosed = true;
+                btnFinishPolygon.classList.add('hidden');
+                setTool('EDIT');
+                updateCalculations();
+                render();
+                showToast('Polígono cerrado. Ajusta los nodos si es necesario.', 'info');
+            }
+        }
+
+        // --- CÁLCULOS GEOMÉTRICOS Y MATEMÁTICOS ---
         function updateCalculations() {
-            let totalArea = 0;
-            let totalPerimeter = 0;
+            let areaInUnits = 0;
+            let perimeterInUnits = 0;
 
             if (state.pixelsPerUnit && state.pixelsPerUnit > 0) {
                 const pxToUnit = 1 / state.pixelsPerUnit;
 
-                state.shapes.forEach(shape => {
-                    let areaUnits = 0;
-                    let perimUnits = 0;
-
-                    if (shape.type === 'POLYGON' && shape.points.length >= 3) {
-                        const ptsPx = shape.points.map(p => imageToScreenCoords(p.x, p.y));
-                        const areaPx = calcPolygonAreaPx(ptsPx);
-                        areaUnits = areaPx * (pxToUnit * pxToUnit);
-                        perimUnits = calcPolygonPerimeterPx(ptsPx) * pxToUnit;
-                    } 
-                    else if (shape.type === 'RECTANGLE' && shape.rectStart && shape.rectEnd) {
-                        const p1 = imageToScreenCoords(shape.rectStart.x, shape.rectStart.y);
-                        const p2 = imageToScreenCoords(shape.rectEnd.x, shape.rectEnd.y);
-                        const wPx = Math.abs(p2.x - p1.x);
-                        const hPx = Math.abs(p2.y - p1.y);
-                        areaUnits = (wPx * pxToUnit) * (hPx * pxToUnit);
-                        perimUnits = 2 * ((wPx * pxToUnit) + (hPx * pxToUnit));
-                    } 
-                    else if (shape.type === 'CIRCLE' && shape.circleCenter) {
-                        const b = getCanvasBounds();
-                        const radiusPx = shape.circleRadiusRel * b.w;
-                        const radiusUnits = radiusPx * pxToUnit;
-                        areaUnits = Math.PI * radiusUnits * radiusUnits;
-                        perimUnits = 2 * Math.PI * radiusUnits;
-                    }
-
-                    shape.calculatedArea = areaUnits;
-                    shape.calculatedPerimeter = perimUnits;
-
-                    totalArea += areaUnits;
-                    totalPerimeter += perimUnits;
-                });
+                if (state.shapeType === 'POLYGON' && state.shapePoints.length >= 3) {
+                    const areaPx = calculatePolygonAreaPx(state.shapePoints);
+                    areaInUnits = areaPx * (pxToUnit * pxToUnit);
+                    perimeterInUnits = calculatePolygonPerimeterPx(state.shapePoints, state.isPolygonClosed) * pxToUnit;
+                } 
+                else if (state.shapeType === 'RECTANGLE' && state.rectStart && state.rectEnd) {
+                    const widthPx = Math.abs(state.rectEnd.x - state.rectStart.x);
+                    const heightPx = Math.abs(state.rectEnd.y - state.rectStart.y);
+                    areaInUnits = (widthPx * pxToUnit) * (heightPx * pxToUnit);
+                    perimeterInUnits = 2 * ((widthPx * pxToUnit) + (heightPx * pxToUnit));
+                } 
+                else if (state.shapeType === 'CIRCLE' && state.circleCenter && state.circleRadiusPx > 0) {
+                    const radiusInUnits = state.circleRadiusPx * pxToUnit;
+                    areaInUnits = Math.PI * radiusInUnits * radiusInUnits;
+                    perimeterInUnits = 2 * Math.PI * radiusInUnits;
+                }
             }
 
-            const unit = state.scaleUnit;
-            displayArea.textContent = `${totalArea.toFixed(2)} ${unit}²`;
-            displayPerimeter.textContent = `${totalPerimeter.toFixed(2)} ${unit}`;
+            // Unidades de área y perímetro
+            const unitStr = state.scaleUnit;
+            displayArea.textContent = `${areaInUnits.toFixed(2)} ${unitStr}²`;
+            displayPerimeter.textContent = `${perimeterInUnits.toFixed(2)} ${unitStr}`;
 
-            // Volumen
+            // Cálculo de Volumen
             const hVal = parseFloat(inputHeight.value) || 0;
-            const hConverted = convertUnit(hVal, selectHeightUnit.value, state.scaleUnit);
-            const totalVolume = totalArea * hConverted;
+            const hUnit = selectHeightUnit.value;
 
-            displayVolume.textContent = `${totalVolume.toFixed(2)} ${unit}³`;
-            displayLiters.textContent = `${convertToLiters(totalVolume, state.scaleUnit).toFixed(2)} L`;
+            // Convertir la altura a la misma unidad de la escala para calcular el volumen en unidades cúbicas homogéneas
+            const hConverted = convertUnit(hVal, hUnit, state.scaleUnit);
+            const volumeInUnits = areaInUnits * hConverted;
+
+            displayVolume.textContent = `${volumeInUnits.toFixed(2)} ${unitStr}³`;
+
+            // Equivalencia aproximada en Litros si está en cm³, m³ o mm³
+            const liters = convertToLiters(volumeInUnits, state.scaleUnit);
+            displayLiters.textContent = `${liters.toFixed(2)} L`;
         }
 
-        function calcPolygonAreaPx(pts) {
+        function calculatePolygonAreaPx(pts) {
             let area = 0;
-            for (let i = 0; i < pts.length; i++) {
-                let j = (i + 1) % pts.length;
+            const n = pts.length;
+            for (let i = 0; i < n; i++) {
+                let j = (i + 1) % n;
                 area += pts[i].x * pts[j].y;
                 area -= pts[j].x * pts[i].y;
             }
             return Math.abs(area) / 2;
         }
 
-        function calcPolygonPerimeterPx(pts) {
+        function calculatePolygonPerimeterPx(pts, closed) {
             let perim = 0;
-            for (let i = 0; i < pts.length; i++) {
-                let j = (i + 1) % pts.length;
-                perim += Math.hypot(pts[j].x - pts[i].x, pts[j].y - pts[i].y);
+            for (let i = 0; i < pts.length - 1; i++) {
+                perim += Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y);
+            }
+            if (closed && pts.length > 2) {
+                perim += Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].y - pts[0].y);
             }
             return perim;
         }
 
         function convertUnit(val, fromUnit, toUnit) {
             if (fromUnit === toUnit) return val;
+            
+            // Convertir primero a metros
             let inMeters = val;
             if (fromUnit === 'cm') inMeters = val / 100;
-            if (fromUnit === 'mm') inMeters = val / 1000;
-            if (fromUnit === 'in') inMeters = val * 0.0254;
-            if (fromUnit === 'ft') inMeters = val * 0.3048;
+            else if (fromUnit === 'mm') inMeters = val / 1000;
+            else if (fromUnit === 'in') inMeters = val * 0.0254;
 
+            // De metros a la unidad destino
             if (toUnit === 'cm') return inMeters * 100;
             if (toUnit === 'mm') return inMeters * 1000;
             if (toUnit === 'in') return inMeters / 0.0254;
-            if (toUnit === 'ft') return inMeters / 0.3048;
-            return inMeters;
+            return inMeters; // m
         }
 
         function convertToLiters(vol, unit) {
@@ -932,116 +866,115 @@
             if (unit === 'cm') return vol / 1000;
             if (unit === 'mm') return vol / 1000000;
             if (unit === 'in') return vol * 0.0163871;
-            if (unit === 'ft') return vol * 28.3168;
             return 0;
         }
 
-        // --- RENDERIZADO DEL CANAVAS ---
+        // --- RENDERIZADO EN CANVAS ---
         function render() {
-            const rect = canvasContainer.getBoundingClientRect();
-            ctx.clearRect(0, 0, rect.width, rect.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (!state.image) return;
 
-            const b = getCanvasBounds();
-            ctx.drawImage(state.image, b.x, b.y, b.w, b.h);
+            // Render de la imagen ocupando el canvas manteniendo aspect ratio
+            const imgAspect = state.image.width / state.image.height;
+            const canvasAspect = canvas.width / canvas.height;
 
-            // Escala
-            drawScaleLine();
+            let renderWidth, renderHeight, x, y;
 
-            // Figuras
-            state.shapes.forEach((shape, index) => {
-                drawShape(shape, index === state.activeShapeIndex);
-            });
-
-            // Polígono en proceso
-            if (state.currentPolygonPoints.length > 0) {
-                const ptsScr = state.currentPolygonPoints.map(p => imageToScreenCoords(p.x, p.y));
-                ctx.save();
-                ctx.strokeStyle = '#38bdf8';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(ptsScr[0].x, ptsScr[0].y);
-                for (let i = 1; i < ptsScr.length; i++) ctx.lineTo(ptsScr[i].x, ptsScr[i].y);
-                ctx.stroke();
-                ptsScr.forEach(p => drawHandle(p.x, p.y, '#38bdf8'));
-                ctx.restore();
+            if (canvasAspect > imgAspect) {
+                renderHeight = canvas.height;
+                renderWidth = canvas.height * imgAspect;
+                x = (canvas.width - renderWidth) / 2;
+                y = 0;
+            } else {
+                renderWidth = canvas.width;
+                renderHeight = canvas.width / imgAspect;
+                x = 0;
+                y = (canvas.height - renderHeight) / 2;
             }
+
+            ctx.drawImage(state.image, x, y, renderWidth, renderHeight);
+
+            // Dibujar Línea de Escala
+            if (state.scaleLine.length > 0) {
+                drawScaleLine();
+            }
+
+            // Dibujar Figura
+            drawShape();
         }
 
         function drawScaleLine() {
-            if (state.scaleLine.length === 0) return;
-            const ptsScr = state.scaleLine.map(p => imageToScreenCoords(p.x, p.y));
-
+            const pts = state.scaleLine;
             ctx.save();
-            ctx.strokeStyle = '#3b82f6';
+            ctx.strokeStyle = '#3b82f6'; // Blue-500
             ctx.lineWidth = 3;
             ctx.setLineDash([6, 4]);
 
-            if (ptsScr.length === 2) {
+            if (pts.length === 2) {
                 ctx.beginPath();
-                ctx.moveTo(ptsScr[0].x, ptsScr[0].y);
-                ctx.lineTo(ptsScr[1].x, ptsScr[1].y);
+                ctx.moveTo(pts[0].x, pts[0].y);
+                ctx.lineTo(pts[1].x, pts[1].y);
                 ctx.stroke();
 
-                const midX = (ptsScr[0].x + ptsScr[1].x) / 2;
-                const midY = (ptsScr[0].y + ptsScr[1].y) / 2;
-                drawBadge(midX, midY - 12, state.pixelsPerUnit ? `${state.realScaleLength} ${state.scaleUnit}` : 'Escala', '#2563eb');
+                // Etiqueta de longitud
+                const midX = (pts[0].x + pts[1].x) / 2;
+                const midY = (pts[0].y + pts[1].y) / 2;
+                drawBadge(midX, midY - 12, state.pixelsPerUnit ? `${state.realScaleLength} ${state.scaleUnit}` : 'Escala', '#3b82f6');
             }
 
-            ptsScr.forEach(p => drawHandle(p.x, p.y, '#3b82f6'));
+            // Nodos de control de la escala
+            pts.forEach((p) => {
+                drawHandle(p.x, p.y, '#3b82f6');
+            });
+
             ctx.restore();
         }
 
-        function drawShape(shape, isActive) {
+        function drawShape() {
             ctx.save();
-            ctx.strokeStyle = isActive ? '#10b981' : '#059669';
-            ctx.fillStyle = isActive ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.12)';
-            ctx.lineWidth = isActive ? 3 : 2;
+            ctx.strokeStyle = '#10b981'; // Emerald-500
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+            ctx.lineWidth = 3;
 
-            if (shape.type === 'POLYGON' && shape.points.length >= 3) {
-                const ptsScr = shape.points.map(p => imageToScreenCoords(p.x, p.y));
+            if (state.shapeType === 'POLYGON' && state.shapePoints.length > 0) {
                 ctx.beginPath();
-                ctx.moveTo(ptsScr[0].x, ptsScr[0].y);
-                for (let i = 1; i < ptsScr.length; i++) ctx.lineTo(ptsScr[i].x, ptsScr[i].y);
-                ctx.closePath();
-                ctx.fill();
+                ctx.moveTo(state.shapePoints[0].x, state.shapePoints[0].y);
+                for (let i = 1; i < state.shapePoints.length; i++) {
+                    ctx.lineTo(state.shapePoints[i].x, state.shapePoints[i].y);
+                }
+                if (state.isPolygonClosed) {
+                    ctx.closePath();
+                    ctx.fill();
+                }
                 ctx.stroke();
 
-                if (state.currentTool === 'EDIT') {
-                    ptsScr.forEach(p => drawHandle(p.x, p.y, '#10b981'));
-                }
+                // Puntos de control
+                state.shapePoints.forEach((p) => {
+                    drawHandle(p.x, p.y, '#10b981');
+                });
             } 
-            else if (shape.type === 'RECTANGLE' && shape.rectStart && shape.rectEnd) {
-                const p1 = imageToScreenCoords(shape.rectStart.x, shape.rectStart.y);
-                const p2 = imageToScreenCoords(shape.rectEnd.x, shape.rectEnd.y);
-                const x = Math.min(p1.x, p2.x);
-                const y = Math.min(p1.y, p2.y);
-                const w = Math.abs(p2.x - p1.x);
-                const h = Math.abs(p2.y - p1.y);
+            else if (state.shapeType === 'RECTANGLE' && state.rectStart && state.rectEnd) {
+                const x = Math.min(state.rectStart.x, state.rectEnd.x);
+                const y = Math.min(state.rectStart.y, state.rectEnd.y);
+                const w = Math.abs(state.rectEnd.x - state.rectStart.x);
+                const h = Math.abs(state.rectEnd.y - state.rectStart.y);
 
                 ctx.fillRect(x, y, w, h);
                 ctx.strokeRect(x, y, w, h);
 
-                if (state.currentTool === 'EDIT') {
-                    const corners = getRectCorners(shape).map(p => imageToScreenCoords(p.x, p.y));
-                    corners.forEach(p => drawHandle(p.x, p.y, '#10b981'));
-                }
+                const corners = getRectCorners();
+                corners.forEach(p => drawHandle(p.x, p.y, '#10b981'));
             } 
-            else if (shape.type === 'CIRCLE' && shape.circleCenter) {
-                const centerScr = imageToScreenCoords(shape.circleCenter.x, shape.circleCenter.y);
-                const b = getCanvasBounds();
-                const radiusPx = shape.circleRadiusRel * b.w;
-
+            else if (state.shapeType === 'CIRCLE' && state.circleCenter && state.circleRadiusPx > 0) {
                 ctx.beginPath();
-                ctx.arc(centerScr.x, centerScr.y, radiusPx, 0, Math.PI * 2);
+                ctx.arc(state.circleCenter.x, state.circleCenter.y, state.circleRadiusPx, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
-                if (state.currentTool === 'EDIT') {
-                    drawHandle(centerScr.x, centerScr.y, '#10b981');
-                    drawHandle(centerScr.x + radiusPx, centerScr.y, '#047857');
-                }
+                // Centro y Borde
+                drawHandle(state.circleCenter.x, state.circleCenter.y, '#10b981');
+                drawHandle(state.circleCenter.x + state.circleRadiusPx, state.circleCenter.y, '#059669');
             }
 
             ctx.restore();
@@ -1050,8 +983,10 @@
         function drawHandle(x, y, color) {
             ctx.save();
             ctx.beginPath();
-            ctx.arc(x, y, 7, 0, Math.PI * 2);
+            ctx.arc(x, y, HANDLE_RADIUS, 0, Math.PI * 2);
             ctx.fillStyle = color;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 4;
             ctx.fill();
             ctx.lineWidth = 2;
             ctx.strokeStyle = '#ffffff';
@@ -1068,6 +1003,8 @@
             const h = 18;
 
             ctx.fillStyle = bgColor;
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 6;
             ctx.beginPath();
             ctx.roundRect(x - w / 2, y - h / 2, w, h, 6);
             ctx.fill();
@@ -1079,152 +1016,52 @@
             ctx.restore();
         }
 
-        // --- ACTUALIZACIÓN DE INTERFAZ / LISTA DE FIGURAS ---
-        function updateShapesListUI() {
-            shapesCount.textContent = state.shapes.length;
-            if (state.shapes.length === 0) {
-                shapesList.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-4">No hay áreas trazadas aún.</p>`;
-                return;
-            }
-
-            shapesList.innerHTML = '';
-            state.shapes.forEach((shape, index) => {
-                const isSelected = index === state.activeShapeIndex;
-                const div = document.createElement('div');
-                div.className = `p-2.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
-                    isSelected ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                }`;
-
-                const typeName = shape.type === 'POLYGON' ? 'Polígono' : shape.type === 'RECTANGLE' ? 'Rectángulo' : 'Círculo';
-                const areaStr = shape.calculatedArea ? `${shape.calculatedArea.toFixed(2)} ${state.scaleUnit}²` : '---';
-
-                div.innerHTML = `
-                    <div class="flex items-center gap-2 cursor-pointer flex-1" onclick="selectShape(${index})">
-                        <i class="fa-solid ${shape.type === 'POLYGON' ? 'fa-draw-polygon' : shape.type === 'RECTANGLE' ? 'fa-square' : 'fa-circle'}"></i>
-                        <span class="font-medium">${typeName} #${index + 1}</span>
-                        <span class="font-mono text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 ml-auto">${areaStr}</span>
-                    </div>
-                    <button onclick="deleteShape(${index})" class="text-slate-500 hover:text-red-400 p-1 ml-2 transition-colors">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                `;
-                shapesList.appendChild(div);
-            });
-        }
-
-        window.selectShape = function(index) {
-            state.activeShapeIndex = index;
-            setTool('EDIT');
-            updateShapesListUI();
-            render();
-        };
-
-        window.deleteShape = function(index) {
-            state.shapes.splice(index, 1);
-            if (state.activeShapeIndex >= state.shapes.length) {
-                state.activeShapeIndex = state.shapes.length - 1;
-            }
-            updateCalculations();
-            updateShapesListUI();
-            render();
-            showToast('Capa eliminada', 'info');
-        };
-
-        // --- EXPORTAR A FOTOTECA / DESCARGA iOS ---
-        function prepareExportModal() {
+        // --- EXPORTAR FOTO CON MEDICIONES ---
+        function exportAnnotatedImage() {
             if (!state.image) {
-                showToast('Carga una foto antes de exportar', 'warning');
+                showToast('Primero debes cargar una imagen', 'warning');
                 return;
             }
 
-            // Canvas temporal de resolución completa
+            // Crear canvas temporal de alta resolución para exportar
             const exportCanvas = document.createElement('canvas');
             const expCtx = exportCanvas.getContext('2d');
 
-            exportCanvas.width = state.imgDimensions.width;
-            exportCanvas.height = state.imgDimensions.height;
+            exportCanvas.width = canvas.width;
+            exportCanvas.height = canvas.height;
 
-            // 1. Fondo (Foto original)
-            expCtx.drawImage(state.image, 0, 0);
+            // Dibujar estado actual
+            expCtx.drawImage(canvas, 0, 0);
 
-            // Escala para dibujar overlays en coordenadas de resolución original
-            const scaleFactorX = state.imgDimensions.width;
-            const scaleFactorY = state.imgDimensions.height;
-
-            // 2. Dibujar Escala
-            if (state.scaleLine.length === 2) {
-                const p1 = { x: state.scaleLine[0].x * scaleFactorX, y: state.scaleLine[0].y * scaleFactorY };
-                const p2 = { x: state.scaleLine[1].x * scaleFactorX, y: state.scaleLine[1].y * scaleFactorY };
-
-                expCtx.strokeStyle = '#2563eb';
-                expCtx.lineWidth = 6;
-                expCtx.beginPath();
-                expCtx.moveTo(p1.x, p1.y);
-                expCtx.lineTo(p2.x, p2.y);
-                expCtx.stroke();
-            }
-
-            // 3. Dibujar Figuras
-            state.shapes.forEach(shape => {
-                expCtx.strokeStyle = '#10b981';
-                expCtx.fillStyle = 'rgba(16, 185, 129, 0.3)';
-                expCtx.lineWidth = 5;
-
-                if (shape.type === 'POLYGON' && shape.points.length >= 3) {
-                    expCtx.beginPath();
-                    expCtx.moveTo(shape.points[0].x * scaleFactorX, shape.points[0].y * scaleFactorY);
-                    for (let i = 1; i < shape.points.length; i++) {
-                        expCtx.lineTo(shape.points[i].x * scaleFactorX, shape.points[i].y * scaleFactorY);
-                    }
-                    expCtx.closePath();
-                    expCtx.fill();
-                    expCtx.stroke();
-                } else if (shape.type === 'RECTANGLE' && shape.rectStart && shape.rectEnd) {
-                    const x1 = shape.rectStart.x * scaleFactorX;
-                    const y1 = shape.rectStart.y * scaleFactorY;
-                    const x2 = shape.rectEnd.x * scaleFactorX;
-                    const y2 = shape.rectEnd.y * scaleFactorY;
-
-                    expCtx.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-                    expCtx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-                } else if (shape.type === 'CIRCLE' && shape.circleCenter) {
-                    const cx = shape.circleCenter.x * scaleFactorX;
-                    const cy = shape.circleCenter.y * scaleFactorY;
-                    const r = shape.circleRadiusRel * scaleFactorX;
-
-                    expCtx.beginPath();
-                    expCtx.arc(cx, cy, r, 0, Math.PI * 2);
-                    expCtx.fill();
-                    expCtx.stroke();
-                }
-            });
-
-            // 4. Marca de agua con totales
-            const bannerHeight = 120;
-            expCtx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-            expCtx.fillRect(20, exportCanvas.height - bannerHeight - 20, 500, bannerHeight);
+            // Agregar marca de agua / leyenda con datos
+            expCtx.save();
+            expCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            expCtx.fillRect(10, canvas.height - 70, 320, 60);
+            expCtx.strokeStyle = 'rgba(51, 65, 85, 0.8)';
+            expCtx.strokeRect(10, canvas.height - 70, 320, 60);
 
             expCtx.fillStyle = '#ffffff';
-            expCtx.font = 'bold 24px Inter, sans-serif';
-            expCtx.fillText('FotoMedida Pro - Reporte 3D', 40, exportCanvas.height - bannerHeight + 20);
+            expCtx.font = 'bold 12px Inter, sans-serif';
+            expCtx.fillText(`Medición FotoMedida 3D`, 20, canvas.height - 50);
 
-            expCtx.font = '20px Inter, sans-serif';
-            expCtx.fillStyle = '#34d399';
-            expCtx.fillText(`Área Total: ${displayArea.textContent}`, 40, exportCanvas.height - bannerHeight + 55);
+            expCtx.font = '11px Inter, sans-serif';
+            expCtx.fillStyle = '#34d399'; // Green
+            expCtx.fillText(`Área: ${displayArea.textContent} | Perímetro: ${displayPerimeter.textContent}`, 20, canvas.height - 32);
+            expCtx.fillStyle = '#c084fc'; // Purple
+            expCtx.fillText(`Volumen: ${displayVolume.textContent} (${displayLiters.textContent})`, 20, canvas.height - 16);
 
-            expCtx.fillStyle = '#c084fc';
-            expCtx.fillText(`Volumen (${inputHeight.value}${selectHeightUnit.value}): ${displayVolume.textContent}`, 40, exportCanvas.height - bannerHeight + 88);
+            expCtx.restore();
 
-            // Obtener DataURL y asignar
-            const dataUrl = exportCanvas.toDataURL('image/png');
-            exportedImagePreview.src = dataUrl;
-            btnDirectDownload.href = dataUrl;
+            // Descargar imagen
+            const link = document.createElement('a');
+            link.download = `medicion-fotomedida-${Date.now()}.png`;
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
 
-            exportModal.classList.remove('opacity-0', 'pointer-events-none');
-            showToast('Imagen lista para guardar', 'success');
+            showToast('Imagen exportada exitosamente', 'success');
         }
 
-        // --- SISTEMA DE TOAST ---
+        // --- SISTEMA DE TOAST NOTIFICACIONES ---
         function showToast(message, type = 'info') {
             const toast = document.getElementById('customToast');
             const toastMessage = document.getElementById('toastMessage');
@@ -1232,17 +1069,22 @@
 
             toastMessage.textContent = message;
 
-            if (type === 'success') toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-sm';
-            else if (type === 'error') toastIcon.className = 'fa-solid fa-circle-xmark text-red-400 text-sm';
-            else if (type === 'warning') toastIcon.className = 'fa-solid fa-triangle-exclamation text-amber-400 text-sm';
-            else toastIcon.className = 'fa-solid fa-circle-info text-blue-400 text-sm';
+            if (type === 'success') {
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            } else if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-circle-xmark text-red-400 text-lg';
+            } else if (type === 'warning') {
+                toastIcon.className = 'fa-solid fa-triangle-exclamation text-amber-400 text-lg';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-info text-blue-400 text-lg';
+            }
 
-            toast.classList.remove('translate-y-16', 'opacity-0', 'pointer-events-none');
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
             toast.classList.add('translate-y-0', 'opacity-100');
 
             setTimeout(() => {
                 toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-16', 'opacity-0', 'pointer-events-none');
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
             }, 3000);
         }
     </script>
